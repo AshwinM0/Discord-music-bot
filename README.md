@@ -1,7 +1,6 @@
 # Discord Music Bot
 
 This is a simple Discord music bot that currently supports playing music from YouTube using `yt-dlp`. 
-It is in the process of being refactored into a scalable, AI-powered Discord application.
 
 ## Setup Instructions
 
@@ -12,5 +11,6 @@ It is in the process of being refactored into a scalable, AI-powered Discord app
 5. Create a `.env` file in the root directory and add your bot token:
    ```env
    DISCORD_TOKEN=your_bot_token_here
+   CHANNEL_ID=your_channel_id_here
    ```
 6. Run the bot: `python bot.py`.

@@ -16,7 +16,7 @@ from collections import deque
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-CHANNELID = 1199373656502042794
+CHANNELID = os.getenv("CHANNEL_ID")
 
 bot = commands.Bot(command_prefix="<>", intents=discord.Intents.all())
 
@@ -43,19 +43,6 @@ def search(query):
         #print(f"Audio URL: {audio_url}")
         
         return [video_title, audio_url]
-
-'''def search(query):
-    with youtube_dl.YoutubeDL({'format': 'bestaudio', 'noplaylist':'True'}) as ydl:
-        #try: requests.get(query)
-        #except: info = ydl.extract_info(f"ytsearch:{query}", download=True)['entries'][0]
-        #else: info = ydl.extract_info(query, download=False)
-        info = ydl.extract_info(f"ytsearch:{query}", download=False)
-        video_title = info['title']
-        print(video_title)
-        print(info)
-        #ydl.download(link)
-    #print(info['formats'])
-    return (info, info['formats'][6]['url'])'''
 
 @bot.event
 async def on_ready():
