@@ -27,6 +27,7 @@
     "join_vc_first": "Join a voice channel first.",
     "already_in_vc": "I'm already in a VC and you're not in one.",
     "already_in_my_vc": "I'm already in your VC.",
+    "not_in_bot_vc": "❌ You must be in the bot's voice channel to use these controls.",
     "joined": "Joined **{channel}**",
     "moved": "Moved to **{channel}**",
     "left_vc": "👋 Left the voice channel.",

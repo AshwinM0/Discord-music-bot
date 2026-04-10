@@ -76,6 +76,10 @@ class MusicControlView(discord.ui.View):
         if not voice:
             embed = discord.Embed(description=resources.get("music.nothing_playing"), color=discord.Color.orange())
             return await interaction.response.send_message(embed=embed, ephemeral=True)
+
+        if not interaction.user.voice or interaction.user.voice.channel != voice.channel:
+            embed = discord.Embed(description=resources.get("music.not_in_bot_vc"), color=discord.Color.red())
+            return await interaction.response.send_message(embed=embed, ephemeral=True)
             
         if voice.is_playing():
              voice.pause()
@@ -101,6 +105,11 @@ class MusicControlView(discord.ui.View):
     @discord.ui.button(label="Skip", emoji="⏭️", style=discord.ButtonStyle.secondary, custom_id="music:skip")
     async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
         voice = get(self.cog.bot.voice_clients, guild=interaction.guild)
+
+        if voice and (not interaction.user.voice or interaction.user.voice.channel != voice.channel):
+            embed = discord.Embed(description=resources.get("music.not_in_bot_vc"), color=discord.Color.red())
+            return await interaction.response.send_message(embed=embed, ephemeral=True)
+
         if voice and (voice.is_playing() or voice.is_paused()):
             setattr(self.cog, f'_skip_req_{interaction.guild.id}', True)
             skipped = self.cog.now_playing.get(interaction.guild.id)
@@ -115,6 +124,11 @@ class MusicControlView(discord.ui.View):
     @discord.ui.button(label="Stop & Clear", emoji="🟥", style=discord.ButtonStyle.primary, custom_id="music:stop")
     async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
         voice = get(self.cog.bot.voice_clients, guild=interaction.guild)
+
+        if voice and (not interaction.user.voice or interaction.user.voice.channel != voice.channel):
+            embed = discord.Embed(description=resources.get("music.not_in_bot_vc"), color=discord.Color.red())
+            return await interaction.response.send_message(embed=embed, ephemeral=True)
+
         self.cog._get_queue(interaction.guild.id).clear()
         self.cog.now_playing.pop(interaction.guild.id, None)
         self.cog.loop_modes.pop(interaction.guild.id, None)
