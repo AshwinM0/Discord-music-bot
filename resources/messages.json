@@ -1,0 +1,74 @@
+{
+  "errors": {
+    "unknown_comm_title": "Unknown Command",
+    "unknown_comm_desc": "`{command}` is not a valid command.",
+    "missing_arg_title": "Missing Argument",
+    "missing_arg_desc": "**`{param}`** is required.\nUsage: `{prefix}{command} {signature}`",
+    "invoke_err_title": "Command Error",
+    "invoke_err_desc": "Something went wrong while running that command.",
+    "general_err_title": "Error",
+    "general_err_desc": "{error}"
+  },
+  "help": {
+    "overview_title": "Bot Commands Overview",
+    "overview_desc": "Here's a list of all available commands. Type `<>help <command>` for more details.",
+    "category_field": "📖 {name}",
+    "command_signature": "`{prefix}{name}` - {doc}",
+    "command_title": "Command: {prefix}{name}",
+    "aliases_field": "Aliases",
+    "usage_field": "Usage",
+    "usage_value": "`{prefix}{name} {signature}`",
+    "cog_title": "Category: {name}"
+  },
+  "music": {
+    "not_in_vc": "I'm not in a VC.",
+    "join_vc_first": "Join a voice channel first.",
+    "already_in_vc": "I'm already in a VC and you're not in one.",
+    "already_in_my_vc": "I'm already in your VC.",
+    "joined": "Joined **{channel}**",
+    "moved": "Moved to **{channel}**",
+    "left_vc": "👋 Left the voice channel.",
+    "inactivity_leave": "Nothing was played in the last 2 minutes. Leaving.",
+
+    "queue_full": "Queue is full (**{max}** tracks max). Remove or clear some tracks first.",
+    "dup_prompt": "⚠️ **{query}** is already {status}.\nDo you want to add it again?",
+    "dup_timeout": "⏰ Duplicate confirmation timed out.",
+    "dup_only_author_confirm": "Only the person who queued this can confirm.",
+    "dup_only_author_cancel": "Only the person who queued this can cancel.",
+    "dup_cancelled": "❌ Cancelled \u2014 duplicate not added.",
+
+    "enqueued": "📥 **{query}** added to queue at position **#{position}**.",
+    "now_playing": "🎶 Now playing: **{track_text}**",
+    "queue_remaining": "{len} track(s) remaining in queue",
+
+    "nothing_playing": "Nothing is playing right now.",
+    "already_playing": "Already playing!",
+    "paused": "⏸ Paused{title}.",
+    "already_paused": "Already paused. Use `resume` to continue.",
+    "resumed": "▶ Resumed{title}.",
+    "nothing_to_resume": "Nothing to resume.",
+    "skipped": "⏭ Skipped{title}.",
+    "stopped": "⏹ Stopped and cleared the queue.",
+
+    "queue_empty": "The queue is empty and nothing is playing.",
+    "queue_title": "🎵 Queue",
+    "queue_status_paused": "⏸ Paused",
+    "queue_status_playing": "🎶 Playing",
+    "queue_now": "{icon} **Now:** {track_text}\n",
+    "queue_item": " `{index}.` {track}",
+    "queue_footer": "{len} track(s) queued | Loop: {loop}",
+
+    "vol_invalid": "Volume must be between 0 and 100.",
+    "vol_set": "🔊 Volume set to **{vol}%**.",
+    
+    "loop_usage": "Usage: `<>loop [off | track | queue]`",
+    "loop_set": "{icon} Loop mode set to **{mode}**.",
+    
+    "shuffle_fail": "Not enough tracks in the queue to shuffle.",
+    "shuffled": "🔀 Queue shuffled.",
+    
+    "remove_fail": "Invalid position. The queue has {len} tracks.",
+    "removed": "🗑️ Removed **{removed}** from the queue.",
+    "queue_cleared": "🗑️ Queue cleared."
+  }
+}

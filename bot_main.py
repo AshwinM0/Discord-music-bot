@@ -6,6 +6,7 @@ from discord.ext import commands
 
 from core.help import CustomHelpCommand
 from core.logger import get_logger
+from core.resource import resources
 
 logger = get_logger(__name__)
 
@@ -43,22 +44,22 @@ class MusicBot(commands.Bot):
         embed = discord.Embed(color=discord.Color.red())
 
         if isinstance(error, commands.CommandNotFound):
-            embed.title = "Unknown Command"
-            embed.description = f"`{ctx.invoked_with}` is not a valid command."
+            embed.title = resources.get("errors.unknown_comm_title")
+            embed.description = resources.get("errors.unknown_comm_desc", command=ctx.invoked_with)
         elif isinstance(error, commands.MissingRequiredArgument):
-            embed.title = "Missing Argument"
-            embed.description = f"**`{error.param.name}`** is required.\nUsage: `{ctx.prefix}{ctx.command.qualified_name} {ctx.command.signature}`"
+            embed.title = resources.get("errors.missing_arg_title")
+            embed.description = resources.get("errors.missing_arg_desc", param=error.param.name, prefix=ctx.prefix, command=ctx.command.qualified_name, signature=ctx.command.signature)
         elif isinstance(error, commands.CommandInvokeError):
-            embed.title = "Command Error"
-            embed.description = "Something went wrong while running that command."
+            embed.title = resources.get("errors.invoke_err_title")
+            embed.description = resources.get("errors.invoke_err_desc")
             logger.error(
                 "CommandInvokeError in %s:\n%s",
                 ctx.command,
                 "".join(traceback.format_exception(type(error), error, error.__traceback__)),
             )
         else:
-            embed.title = "Error"
-            embed.description = str(error)
+            embed.title = resources.get("errors.general_err_title")
+            embed.description = resources.get("errors.general_err_desc", error=str(error))
             logger.warning("Unhandled command error: %s", error)
 
         await ctx.send(embed=embed)
