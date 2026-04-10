@@ -4,3 +4,4 @@ __pycache__/
 .env
 pip_install.log
 .DS_Store
+logs/
