@@ -4,7 +4,9 @@ import time
 from collections import deque
 
 import discord
-import requests
+import re
+from urllib.parse import urlparse
+
 import yt_dlp as youtube_dl
 from discord import FFmpegPCMAudio
 from discord.ext import commands
@@ -27,16 +29,26 @@ YDL_OPTS = {
 
 MAX_QUEUE_SIZE = 50
 
+_YOUTUBE_RE = re.compile(
+    r"^https?://(www\.)?(youtube\.com|youtu\.be|music\.youtube\.com)/"
+)
+
+
+def _is_url(query: str) -> bool:
+    """Check if *query* is a valid YouTube URL (rejects non-YT domains to prevent SSRF)."""
+    parsed = urlparse(query)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return False
+    return bool(_YOUTUBE_RE.match(query))
+
 
 def _search(query: str) -> tuple[str, str, str, int]:
     """Search YouTube for *query* and return ``(title, audio_url, video_url, duration)``."""
     with youtube_dl.YoutubeDL(YDL_OPTS) as ydl:
-        try:
-            requests.get(query)
-        except Exception:
-            info = ydl.extract_info(f"ytsearch:{query} audio", download=False)["entries"][0]
-        else:
+        if _is_url(query):
             info = ydl.extract_info(query, download=False)
+        else:
+            info = ydl.extract_info(f"ytsearch:{query} audio", download=False)["entries"][0]
 
         return info.get("title", "Unknown"), info.get("url", ""), info.get("webpage_url", ""), info.get("duration", 0)
 
@@ -275,6 +287,7 @@ class Music(commands.Cog):
     # ── Commands ─────────────────────────────────────────────────
 
     @commands.command()
+    @commands.cooldown(2, 5, commands.BucketType.user)
     async def join(self, ctx: commands.Context) -> None:
         """Join the voice channel you are in."""
         voice = get(self.bot.voice_clients, guild=ctx.guild)
@@ -301,6 +314,7 @@ class Music(commands.Cog):
             await self._send_embed(ctx, resources.get("music.moved", channel=author_channel.name))
 
     @commands.command()
+    @commands.cooldown(2, 5, commands.BucketType.user)
     async def leave(self, ctx: commands.Context) -> None:
         """Leave the current voice channel."""
         voice = get(self.bot.voice_clients, guild=ctx.guild)
@@ -338,6 +352,7 @@ class Music(commands.Cog):
                 await self._play_next(ctx)
 
     @commands.command()
+    @commands.cooldown(2, 10, commands.BucketType.user)
     async def play(self, ctx: commands.Context, *, query: str) -> None:
         """Play a song by URL or search query."""
         queue = self._get_queue(ctx.guild.id)
@@ -371,6 +386,7 @@ class Music(commands.Cog):
         await self._enqueue(ctx, query)
 
     @commands.command()
+    @commands.cooldown(3, 5, commands.BucketType.user)
     async def skip(self, ctx: commands.Context) -> None:
         """Skip the current track."""
         voice = get(self.bot.voice_clients, guild=ctx.guild)
@@ -384,6 +400,7 @@ class Music(commands.Cog):
             await self._send_embed(ctx, resources.get("music.nothing_playing"), color=discord.Color.orange())
 
     @commands.command()
+    @commands.cooldown(3, 5, commands.BucketType.user)
     async def pause(self, ctx: commands.Context) -> None:
         """Pause the current track."""
         voice = get(self.bot.voice_clients, guild=ctx.guild)
@@ -402,6 +419,7 @@ class Music(commands.Cog):
             await self._send_embed(ctx, resources.get("music.nothing_playing"), color=discord.Color.orange())
 
     @commands.command()
+    @commands.cooldown(3, 5, commands.BucketType.user)
     async def resume(self, ctx: commands.Context) -> None:
         """Resume a paused track."""
         voice = get(self.bot.voice_clients, guild=ctx.guild)
@@ -422,6 +440,7 @@ class Music(commands.Cog):
             await self._send_embed(ctx, resources.get("music.nothing_to_resume"), color=discord.Color.orange())
 
     @commands.command()
+    @commands.cooldown(2, 10, commands.BucketType.user)
     async def stop(self, ctx: commands.Context) -> None:
         """Stop playback and clear the queue."""
         voice = get(self.bot.voice_clients, guild=ctx.guild)
@@ -466,6 +485,7 @@ class Music(commands.Cog):
         await ctx.send(embed=embed, view=MusicControlView(self))
 
     @commands.command(name="q", aliases=["queue"])
+    @commands.cooldown(2, 5, commands.BucketType.user)
     async def queue(self, ctx: commands.Context) -> None:
         """Show the current song queue."""
         guild_id = ctx.guild.id
@@ -496,6 +516,7 @@ class Music(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
+    @commands.cooldown(3, 5, commands.BucketType.user)
     async def volume(self, ctx: commands.Context, vol: int) -> None:
         """Change the player volume (0-100)."""
         if vol < 0 or vol > 100:
@@ -512,6 +533,7 @@ class Music(commands.Cog):
         await self._send_embed(ctx, resources.get("music.vol_set", vol=vol), color=discord.Color.green())
 
     @commands.command()
+    @commands.cooldown(3, 5, commands.BucketType.user)
     async def loop(self, ctx: commands.Context, mode: str = "") -> None:
         """Set loop mode: off, track, queue."""
         mode = mode.lower()
@@ -524,6 +546,7 @@ class Music(commands.Cog):
         await self._send_embed(ctx, resources.get("music.loop_set", icon=icons[mode], mode=mode), color=discord.Color.green())
 
     @commands.command()
+    @commands.cooldown(2, 10, commands.BucketType.user)
     async def shuffle(self, ctx: commands.Context) -> None:
         """Shuffle the current queue."""
         q = self._get_queue(ctx.guild.id)
@@ -537,6 +560,7 @@ class Music(commands.Cog):
         await self._send_embed(ctx, resources.get("music.shuffled"), color=discord.Color.green())
 
     @commands.command()
+    @commands.cooldown(3, 5, commands.BucketType.user)
     async def remove(self, ctx: commands.Context, position: int) -> None:
         """Remove a specific track from the queue."""
         q = self._get_queue(ctx.guild.id)
@@ -550,6 +574,7 @@ class Music(commands.Cog):
         await self._send_embed(ctx, resources.get("music.removed", removed=removed), color=discord.Color.green())
 
     @commands.command()
+    @commands.cooldown(2, 10, commands.BucketType.user)
     async def clear(self, ctx: commands.Context) -> None:
         """Clear the entire queue."""
         q = self._get_queue(ctx.guild.id)

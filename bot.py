@@ -6,7 +6,11 @@ from core.logger import get_logger
 
 logger = get_logger(__name__)
 
-bot = MusicBot(command_prefix="<>", intents=discord.Intents.all())
+intents = discord.Intents.default()
+intents.message_content = True
+intents.voice_states = True
+
+bot = MusicBot(command_prefix="<>", intents=intents)
 
 if __name__ == "__main__":
     logger.info("Starting bot...")

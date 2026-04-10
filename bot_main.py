@@ -46,6 +46,10 @@ class MusicBot(commands.Bot):
         if isinstance(error, commands.CommandNotFound):
             embed.title = resources.get("errors.unknown_comm_title")
             embed.description = resources.get("errors.unknown_comm_desc", command=ctx.invoked_with)
+        elif isinstance(error, commands.CommandOnCooldown):
+            embed.title = resources.get("errors.cooldown_title")
+            embed.description = resources.get("errors.cooldown_desc", retry=f"{error.retry_after:.1f}")
+            embed.color = discord.Color.orange()
         elif isinstance(error, commands.MissingRequiredArgument):
             embed.title = resources.get("errors.missing_arg_title")
             embed.description = resources.get("errors.missing_arg_desc", param=error.param.name, prefix=ctx.prefix, command=ctx.command.qualified_name, signature=ctx.command.signature)

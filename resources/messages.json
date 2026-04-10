@@ -7,7 +7,9 @@
     "invoke_err_title": "Command Error",
     "invoke_err_desc": "Something went wrong while running that command.",
     "general_err_title": "Error",
-    "general_err_desc": "{error}"
+    "general_err_desc": "{error}",
+    "cooldown_title": "Slow Down!",
+    "cooldown_desc": "⏳ Try again in **{retry}s**."
   },
   "help": {
     "overview_title": "Bot Commands Overview",
