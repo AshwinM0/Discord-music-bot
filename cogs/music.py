@@ -1,189 +1,23 @@
+from discord import FFmpegPCMAudio
 import asyncio
 import random
 import time
 from collections import deque
 
 import discord
-import re
-from urllib.parse import urlparse
-
-import yt_dlp as youtube_dl
-from discord import FFmpegPCMAudio
 from discord.ext import commands
 from discord.utils import get
 
+from core.config import settings
 from core.logger import get_logger
 from core.resource import resources
+from core.database import GuildConfig
+from core.search import search_youtube
+from core.utils import make_progress_bar
+from core.checks import dj_required
+from core.music_ui import MusicControlView, DuplicateConfirmView
 
 logger = get_logger(__name__)
-
-FFMPEG_OPTS = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-    "options": "-vn",
-}
-
-YDL_OPTS = {
-    "format": "bestaudio/best",
-    "noplaylist": "True",
-}
-
-MAX_QUEUE_SIZE = 50
-
-_YOUTUBE_RE = re.compile(
-    r"^https?://(www\.)?(youtube\.com|youtu\.be|music\.youtube\.com)/"
-)
-
-
-def _is_url(query: str) -> bool:
-    """Check if *query* is a valid YouTube URL (rejects non-YT domains to prevent SSRF)."""
-    parsed = urlparse(query)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
-        return False
-    return bool(_YOUTUBE_RE.match(query))
-
-
-def _search(query: str) -> tuple[str, str, str, int]:
-    """Search YouTube for *query* and return ``(title, audio_url, video_url, duration)``."""
-    with youtube_dl.YoutubeDL(YDL_OPTS) as ydl:
-        if _is_url(query):
-            info = ydl.extract_info(query, download=False)
-        else:
-            info = ydl.extract_info(f"ytsearch:{query} audio", download=False)["entries"][0]
-
-        return info.get("title", "Unknown"), info.get("url", ""), info.get("webpage_url", ""), info.get("duration", 0)
-
-def make_progress_bar(elapsed: float, duration: float, length: int = 15) -> str:
-    """Generate a text-based progress bar."""
-    if duration == 0:
-        return "🔘" + "▬" * (length - 1)
-    ratio = min(max(elapsed / duration, 0.0), 1.0)
-    pos = int(ratio * length)
-    bar = ["▬"] * length
-    if pos < length:
-        bar[pos] = "🔘"
-    else:
-        bar[-1] = "🔘"
-    return "".join(bar)
-
-class MusicControlView(discord.ui.View):
-    def __init__(self, cog: "Music"):
-        super().__init__(timeout=None)
-        self.cog = cog
-
-    @discord.ui.button(label="Play / Pause", emoji="⏯️", style=discord.ButtonStyle.primary, custom_id="music:play_pause")
-    async def toggle_play(self, interaction: discord.Interaction, button: discord.ui.Button):
-        voice = get(self.cog.bot.voice_clients, guild=interaction.guild)
-        if not voice:
-            embed = discord.Embed(description=resources.get("music.nothing_playing"), color=discord.Color.orange())
-            return await interaction.response.send_message(embed=embed, ephemeral=True)
-
-        if not interaction.user.voice or interaction.user.voice.channel != voice.channel:
-            embed = discord.Embed(description=resources.get("music.not_in_bot_vc"), color=discord.Color.red())
-            return await interaction.response.send_message(embed=embed, ephemeral=True)
-            
-        if voice.is_playing():
-             voice.pause()
-             current = self.cog.now_playing.get(interaction.guild.id)
-             title = f" **{current['title']}**" if current else ""
-             if current:
-                 current["paused_at"] = time.time()
-             embed = discord.Embed(description=resources.get("music.paused", title=title), color=discord.Color.orange())
-             await interaction.response.send_message(embed=embed)
-        elif voice.is_paused():
-             voice.resume()
-             current = self.cog.now_playing.get(interaction.guild.id)
-             title = f" **{current['title']}**" if current else ""
-             if current and current.get("paused_at"):
-                 current["start_time"] += time.time() - current["paused_at"]
-                 current["paused_at"] = 0
-             embed = discord.Embed(description=resources.get("music.resumed", title=title), color=discord.Color.green())
-             await interaction.response.send_message(embed=embed)
-        else:
-             embed = discord.Embed(description=resources.get("music.nothing_playing"), color=discord.Color.orange())
-             await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    @discord.ui.button(label="Skip", emoji="⏭️", style=discord.ButtonStyle.secondary, custom_id="music:skip")
-    async def skip(self, interaction: discord.Interaction, button: discord.ui.Button):
-        voice = get(self.cog.bot.voice_clients, guild=interaction.guild)
-
-        if voice and (not interaction.user.voice or interaction.user.voice.channel != voice.channel):
-            embed = discord.Embed(description=resources.get("music.not_in_bot_vc"), color=discord.Color.red())
-            return await interaction.response.send_message(embed=embed, ephemeral=True)
-
-        if voice and (voice.is_playing() or voice.is_paused()):
-            setattr(self.cog, f'_skip_req_{interaction.guild.id}', True)
-            skipped = self.cog.now_playing.get(interaction.guild.id)
-            skipped_text = f" **{skipped['title']}**" if skipped else ""
-            voice.stop()
-            embed = discord.Embed(description=resources.get("music.skipped", title=skipped_text), color=discord.Color.green())
-            await interaction.response.send_message(embed=embed)
-        else:
-             embed = discord.Embed(description=resources.get("music.nothing_playing"), color=discord.Color.orange())
-             await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    @discord.ui.button(label="Stop & Clear", emoji="🟥", style=discord.ButtonStyle.primary, custom_id="music:stop")
-    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
-        voice = get(self.cog.bot.voice_clients, guild=interaction.guild)
-
-        if voice and (not interaction.user.voice or interaction.user.voice.channel != voice.channel):
-            embed = discord.Embed(description=resources.get("music.not_in_bot_vc"), color=discord.Color.red())
-            return await interaction.response.send_message(embed=embed, ephemeral=True)
-
-        self.cog._get_queue(interaction.guild.id).clear()
-        self.cog.now_playing.pop(interaction.guild.id, None)
-        self.cog.loop_modes.pop(interaction.guild.id, None)
-        if voice and (voice.is_playing() or voice.is_paused()):
-            setattr(self.cog, f'_skip_req_{interaction.guild.id}', True)
-            voice.stop()
-            embed = discord.Embed(description=resources.get("music.stopped"), color=discord.Color.red())
-            await interaction.response.send_message(embed=embed)
-        else:
-             embed = discord.Embed(description=resources.get("music.nothing_playing"), color=discord.Color.orange())
-             await interaction.response.send_message(embed=embed, ephemeral=True)
-
-
-class DuplicateConfirmView(discord.ui.View):
-    """Confirmation prompt when a user tries to queue a duplicate track."""
-
-    def __init__(self, cog: "Music", ctx: commands.Context, query: str):
-        super().__init__(timeout=30)
-        self.cog = cog
-        self.ctx = ctx
-        self.query = query
-        self.responded = False
-
-    async def on_timeout(self) -> None:
-        if not self.responded:
-            embed = discord.Embed(description=resources.get("music.dup_timeout"), color=discord.Color.greyple())
-            try:
-                await self.message.edit(embed=embed, view=None)
-            except Exception:
-                pass
-
-    @discord.ui.button(label="Add Anyway", emoji="✅", style=discord.ButtonStyle.success)
-    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user != self.ctx.author:
-            return await interaction.response.send_message(
-                embed=discord.Embed(description=resources.get("music.dup_only_author_confirm"), color=discord.Color.red()),
-                ephemeral=True,
-            )
-        self.responded = True
-        # Delegate to the cog's internal enqueue logic
-        await interaction.response.defer()
-        await interaction.delete_original_response()
-        await self.cog._enqueue(self.ctx, self.query)
-
-    @discord.ui.button(label="Cancel", emoji="❌", style=discord.ButtonStyle.secondary)
-    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user != self.ctx.author:
-            return await interaction.response.send_message(
-                embed=discord.Embed(description=resources.get("music.dup_only_author_cancel"), color=discord.Color.red()),
-                ephemeral=True,
-            )
-        self.responded = True
-        embed = discord.Embed(description=resources.get("music.dup_cancelled"), color=discord.Color.greyple())
-        await interaction.response.edit_message(embed=embed, view=None)
-
 
 class Music(commands.Cog):
     """Music playback commands with per-guild queue isolation."""
@@ -194,6 +28,20 @@ class Music(commands.Cog):
         self.now_playing: dict[int, dict] = {}  # guild_id -> {title, video_url, query}
         self.volumes: dict[int, float] = {}     # guild_id -> float (0.0 to 1.0)
         self.loop_modes: dict[int, str] = {}    # guild_id -> "off", "track", "queue"
+
+    async def cog_check(self, ctx: commands.Context) -> bool:
+        """Globally enforce the music_channel_id if one is configured."""
+        if not ctx.guild:
+            return False
+            
+        config = await GuildConfig.get_or_none(guild_id=ctx.guild.id)
+        music_channel_id = config.music_channel_id if config else None
+        
+        if music_channel_id and ctx.channel.id != music_channel_id:
+            channel = ctx.guild.get_channel(music_channel_id)
+            channel_name = channel.mention if channel else f"<#{music_channel_id}>"
+            raise commands.CheckFailure(resources.get("admin.wrong_channel", channel=channel_name))
+        return True
 
     # ── Helpers ──────────────────────────────────────────────────
 
@@ -259,7 +107,7 @@ class Music(commands.Cog):
 
         if queue:
             query = queue.popleft()
-            title, source, video_url, duration = _search(query)
+            title, source, video_url, duration = search_youtube(query)
             logger.info("Now playing '%s' in guild %s", title, guild_id)
 
             self.now_playing[guild_id] = {
@@ -272,7 +120,7 @@ class Music(commands.Cog):
             }
 
             vol = self.volumes.get(guild_id, 1.0)
-            audio_source = discord.PCMVolumeTransformer(FFmpegPCMAudio(source, **FFMPEG_OPTS), volume=vol)
+            audio_source = discord.PCMVolumeTransformer(FFmpegPCMAudio(source, **settings.FFMPEG_OPTS), volume=vol)
 
             voice.play(
                 audio_source,
@@ -291,7 +139,7 @@ class Music(commands.Cog):
         else:
             self.now_playing.pop(guild_id, None)
             logger.debug("Queue empty for guild %s — waiting 120s before leaving", guild_id)
-            await asyncio.sleep(120)
+            await asyncio.sleep(settings.INACTIVITY_TIMEOUT)
             voice = get(self.bot.voice_clients, guild=ctx.guild)
             if voice and not voice.is_playing() and not voice.is_paused() and not queue:
                 await self._send_embed(ctx, resources.get("music.inactivity_leave"))
@@ -372,10 +220,10 @@ class Music(commands.Cog):
         queue = self._get_queue(ctx.guild.id)
 
         # ── Guard: queue cap ──
-        if len(queue) >= MAX_QUEUE_SIZE:
+        if len(queue) >= settings.MAX_QUEUE_SIZE:
             await self._send_embed(
                 ctx,
-                resources.get("music.queue_full", max=MAX_QUEUE_SIZE),
+                resources.get("music.queue_full", max=settings.MAX_QUEUE_SIZE),
                 color=discord.Color.red(),
             )
             return
@@ -401,6 +249,7 @@ class Music(commands.Cog):
 
     @commands.command()
     @commands.cooldown(3, 5, commands.BucketType.user)
+    @dj_required()
     async def skip(self, ctx: commands.Context) -> None:
         """Skip the current track."""
         voice = get(self.bot.voice_clients, guild=ctx.guild)
@@ -415,6 +264,7 @@ class Music(commands.Cog):
 
     @commands.command()
     @commands.cooldown(3, 5, commands.BucketType.user)
+    @dj_required()
     async def pause(self, ctx: commands.Context) -> None:
         """Pause the current track."""
         voice = get(self.bot.voice_clients, guild=ctx.guild)
@@ -434,6 +284,7 @@ class Music(commands.Cog):
 
     @commands.command()
     @commands.cooldown(3, 5, commands.BucketType.user)
+    @dj_required()
     async def resume(self, ctx: commands.Context) -> None:
         """Resume a paused track."""
         voice = get(self.bot.voice_clients, guild=ctx.guild)
@@ -455,6 +306,7 @@ class Music(commands.Cog):
 
     @commands.command()
     @commands.cooldown(2, 10, commands.BucketType.user)
+    @dj_required()
     async def stop(self, ctx: commands.Context) -> None:
         """Stop playback and clear the queue."""
         voice = get(self.bot.voice_clients, guild=ctx.guild)
@@ -531,6 +383,7 @@ class Music(commands.Cog):
 
     @commands.command()
     @commands.cooldown(3, 5, commands.BucketType.user)
+    @dj_required()
     async def volume(self, ctx: commands.Context, vol: int) -> None:
         """Change the player volume (0-100)."""
         if vol < 0 or vol > 100:
@@ -548,6 +401,7 @@ class Music(commands.Cog):
 
     @commands.command()
     @commands.cooldown(3, 5, commands.BucketType.user)
+    @dj_required()
     async def loop(self, ctx: commands.Context, mode: str = "") -> None:
         """Set loop mode: off, track, queue."""
         mode = mode.lower()
@@ -561,6 +415,7 @@ class Music(commands.Cog):
 
     @commands.command()
     @commands.cooldown(2, 10, commands.BucketType.user)
+    @dj_required()
     async def shuffle(self, ctx: commands.Context) -> None:
         """Shuffle the current queue."""
         q = self._get_queue(ctx.guild.id)
@@ -575,6 +430,7 @@ class Music(commands.Cog):
 
     @commands.command()
     @commands.cooldown(3, 5, commands.BucketType.user)
+    @dj_required()
     async def remove(self, ctx: commands.Context, position: int) -> None:
         """Remove a specific track from the queue."""
         q = self._get_queue(ctx.guild.id)
@@ -589,6 +445,7 @@ class Music(commands.Cog):
 
     @commands.command()
     @commands.cooldown(2, 10, commands.BucketType.user)
+    @dj_required()
     async def clear(self, ctx: commands.Context) -> None:
         """Clear the entire queue."""
         q = self._get_queue(ctx.guild.id)

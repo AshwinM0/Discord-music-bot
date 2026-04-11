@@ -7,6 +7,7 @@ from discord.ext import commands
 from core.help import CustomHelpCommand
 from core.logger import get_logger
 from core.resource import resources
+from core.database import init_db, close_db
 
 logger = get_logger(__name__)
 
@@ -24,6 +25,7 @@ class MusicBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         """Dynamically discover and load every Cog in the cogs/ directory."""
+        await init_db()
         for cog_file in sorted(COGS_DIR.glob("*.py")):
             if cog_file.name.startswith("_"):
                 continue
@@ -36,6 +38,11 @@ class MusicBot(commands.Bot):
 
     async def on_ready(self) -> None:
         logger.info("Bot is online as %s (ID: %s)", self.user, self.user.id)
+
+    async def close(self) -> None:
+        """Close database connection and shutdown bot."""
+        await close_db()
+        await super().close()
 
     # ── Global error handler ────────────────────────────────────
 
@@ -61,6 +68,9 @@ class MusicBot(commands.Bot):
                 ctx.command,
                 "".join(traceback.format_exception(type(error), error, error.__traceback__)),
             )
+        elif isinstance(error, commands.CheckFailure):
+            embed.title = "Permission Denied"
+            embed.description = str(error)
         else:
             embed.title = resources.get("errors.general_err_title")
             embed.description = resources.get("errors.general_err_desc", error=str(error))

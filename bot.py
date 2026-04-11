@@ -10,7 +10,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 
-bot = MusicBot(command_prefix="<>", intents=intents)
+bot = MusicBot(command_prefix=settings.COMMAND_PREFIX, intents=intents)
 
 if __name__ == "__main__":
     logger.info("Starting bot...")

@@ -7,3 +7,6 @@ pip_install.log
 logs/
 htmlcov/
 .coverage
+bot.db
+bot.db-shm
+bot.db-wal
