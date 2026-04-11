@@ -1,0 +1,36 @@
+name: Run Tests
+
+# 1. WHEN should this workflow run?
+on:
+  # Run when code is pushed to the main branch
+  push:
+    branches: [ "main" ]
+  # Run when a Pull Request is opened against the main branch
+  pull_request:
+    branches: [ "main" ]
+
+# 2. WHAT should be executed?
+jobs:
+  test:
+    # 3. WHERE should it run? (A fresh, virtual Linux machine)
+    runs-on: ubuntu-latest
+
+    # 4. HOW should it run? (The sequence of steps)
+    steps:
+    - name: 📥 Checkout repository
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: "pip" # This makes future runs faster by caching dependencies
+
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: 🧪 Run unit tests with coverage
+      run: |
+        pytest --cov=core --cov=cogs tests/
