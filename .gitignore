@@ -5,3 +5,5 @@ __pycache__/
 pip_install.log
 .DS_Store
 logs/
+htmlcov/
+.coverage
