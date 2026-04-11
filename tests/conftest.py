@@ -93,3 +93,38 @@ def music_cog(mock_bot):
     """
     from cogs.music import Music
     return Music(mock_bot)
+
+
+@pytest.fixture
+def mock_voice_client(mock_voice_channel):
+    """Create a mock VoiceClient that simulates an active voice connection."""
+    vc = MagicMock(spec=discord.VoiceClient)
+    vc.channel = mock_voice_channel
+    vc.is_playing = MagicMock(return_value=False)
+    vc.is_paused = MagicMock(return_value=False)
+    vc.is_connected = MagicMock(return_value=True)
+    vc.play = MagicMock()
+    vc.stop = MagicMock()
+    vc.pause = MagicMock()
+    vc.resume = MagicMock()
+    vc.disconnect = AsyncMock()
+    vc.source = MagicMock()
+    vc.source.volume = 1.0
+    return vc
+
+
+@pytest.fixture
+def mock_interaction(mock_guild, mock_author, mock_voice_channel):
+    """Create a mock discord.Interaction for testing UI button callbacks."""
+    interaction = MagicMock(spec=discord.Interaction)
+    interaction.guild = mock_guild
+    interaction.user = mock_author
+    interaction.user.voice = MagicMock()
+    interaction.user.voice.channel = mock_voice_channel
+    interaction.response = MagicMock()
+    interaction.response.send_message = AsyncMock()
+    interaction.response.edit_message = AsyncMock()
+    interaction.response.defer = AsyncMock()
+    interaction.delete_original_response = AsyncMock()
+    return interaction
+
