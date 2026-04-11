@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.ext import commands
 from core.database import GuildConfig
 from core.resource import resources
@@ -25,7 +26,8 @@ class Admin(commands.Cog):
             return False
         return True
 
-    @commands.command()
+    @commands.hybrid_command()
+    @app_commands.describe(channel="The text channel to lock music commands to. Omit to unlock.")
     async def setchannel(self, ctx: commands.Context, channel: discord.TextChannel = None) -> None:
         """Lock music commands to a specific text channel. Omit the channel to unlock."""
         channel_id = channel.id if channel else None
@@ -49,7 +51,8 @@ class Admin(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.hybrid_command()
+    @app_commands.describe(role="The role required for DJ commands. Omit to unlock.")
     async def setdj(self, ctx: commands.Context, role: discord.Role = None) -> None:
         """Set a DJ role that is required for destructive commands. Omit the role to unlock."""
         role_id = role.id if role else None
@@ -72,6 +75,35 @@ class Admin(commands.Cog):
             logger.info("Guild %s removed DJ role", ctx.guild.id)
 
         await ctx.send(embed=embed)
+
+    # ── Owner-only sync command ──────────────────────────────────
+    # This stays as a plain prefix command so it always works,
+    # even before any slash commands are synced.
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def sync(self, ctx: commands.Context, spec: str | None = None) -> None:
+        """
+        Sync slash commands to Discord. Owner only.
+        Usage:
+          <>sync        -> Sync to the current guild (instant).
+          <>sync global -> Sync globally (up to 1 hour).
+          <>sync clear  -> Clear guild-specific commands.
+        """
+        if spec == "global":
+            synced = await self.bot.tree.sync()
+            await ctx.send(f"✅ Synced **{len(synced)}** commands globally.")
+            logger.info("Global slash command sync: %d commands", len(synced))
+        elif spec == "clear":
+            self.bot.tree.clear_commands(guild=ctx.guild)
+            await self.bot.tree.sync(guild=ctx.guild)
+            await ctx.send("🗑️ Cleared slash commands for this guild.")
+            logger.info("Cleared guild slash commands for %s", ctx.guild.id)
+        else:
+            self.bot.tree.copy_global_to(guild=ctx.guild)
+            synced = await self.bot.tree.sync(guild=ctx.guild)
+            await ctx.send(f"✅ Synced **{len(synced)}** commands to this guild.")
+            logger.info("Guild slash command sync for %s: %d commands", ctx.guild.id, len(synced))
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Admin(bot))

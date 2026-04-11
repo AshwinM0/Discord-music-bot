@@ -1,4 +1,4 @@
-from discord import FFmpegPCMAudio
+from discord import FFmpegPCMAudio, app_commands
 import asyncio
 import random
 import time
@@ -148,7 +148,7 @@ class Music(commands.Cog):
 
     # ── Commands ─────────────────────────────────────────────────
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.cooldown(2, 5, commands.BucketType.user)
     async def join(self, ctx: commands.Context) -> None:
         """Join the voice channel you are in."""
@@ -175,7 +175,7 @@ class Music(commands.Cog):
             logger.info("Moved to %s in guild %s", author_channel, ctx.guild.id)
             await self._send_embed(ctx, resources.get("music.moved", channel=author_channel.name))
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.cooldown(2, 5, commands.BucketType.user)
     async def leave(self, ctx: commands.Context) -> None:
         """Leave the current voice channel."""
@@ -213,8 +213,9 @@ class Music(commands.Cog):
             async with ctx.typing():
                 await self._play_next(ctx)
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.cooldown(2, 10, commands.BucketType.user)
+    @app_commands.describe(query="A YouTube URL or search query.")
     async def play(self, ctx: commands.Context, *, query: str) -> None:
         """Play a song by URL or search query."""
         queue = self._get_queue(ctx.guild.id)
@@ -247,7 +248,7 @@ class Music(commands.Cog):
 
         await self._enqueue(ctx, query)
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.cooldown(3, 5, commands.BucketType.user)
     @dj_required()
     async def skip(self, ctx: commands.Context) -> None:
@@ -262,7 +263,7 @@ class Music(commands.Cog):
         else:
             await self._send_embed(ctx, resources.get("music.nothing_playing"), color=discord.Color.orange())
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.cooldown(3, 5, commands.BucketType.user)
     @dj_required()
     async def pause(self, ctx: commands.Context) -> None:
@@ -282,7 +283,7 @@ class Music(commands.Cog):
         else:
             await self._send_embed(ctx, resources.get("music.nothing_playing"), color=discord.Color.orange())
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.cooldown(3, 5, commands.BucketType.user)
     @dj_required()
     async def resume(self, ctx: commands.Context) -> None:
@@ -304,7 +305,7 @@ class Music(commands.Cog):
         else:
             await self._send_embed(ctx, resources.get("music.nothing_to_resume"), color=discord.Color.orange())
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.cooldown(2, 10, commands.BucketType.user)
     @dj_required()
     async def stop(self, ctx: commands.Context) -> None:
@@ -320,7 +321,7 @@ class Music(commands.Cog):
         else:
             await self._send_embed(ctx, resources.get("music.nothing_playing"), color=discord.Color.orange())
 
-    @commands.command(name="np", aliases=["nowplaying"])
+    @commands.hybrid_command(name="np", aliases=["nowplaying"])
     async def now_playing_cmd(self, ctx: commands.Context) -> None:
         """Show what's currently playing."""
         voice = get(self.bot.voice_clients, guild=ctx.guild)
@@ -350,7 +351,7 @@ class Music(commands.Cog):
             embed.set_footer(text=f"Up next: {queue[0]} · {len(queue)} in queue")
         await ctx.send(embed=embed, view=MusicControlView(self))
 
-    @commands.command(name="q", aliases=["queue"])
+    @commands.hybrid_command(name="q", aliases=["queue"])
     @commands.cooldown(2, 5, commands.BucketType.user)
     async def queue(self, ctx: commands.Context) -> None:
         """Show the current song queue."""
@@ -381,9 +382,10 @@ class Music(commands.Cog):
         embed.set_footer(text=resources.get("music.queue_footer", len=len(q), loop=self.loop_modes.get(guild_id, 'off')))
         await ctx.send(embed=embed)
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.cooldown(3, 5, commands.BucketType.user)
     @dj_required()
+    @app_commands.describe(vol="Volume level (0-100).")
     async def volume(self, ctx: commands.Context, vol: int) -> None:
         """Change the player volume (0-100)."""
         if vol < 0 or vol > 100:
@@ -399,9 +401,10 @@ class Music(commands.Cog):
 
         await self._send_embed(ctx, resources.get("music.vol_set", vol=vol), color=discord.Color.green())
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.cooldown(3, 5, commands.BucketType.user)
     @dj_required()
+    @app_commands.describe(mode="Loop mode: off, track, or queue.")
     async def loop(self, ctx: commands.Context, mode: str = "") -> None:
         """Set loop mode: off, track, queue."""
         mode = mode.lower()
@@ -413,7 +416,7 @@ class Music(commands.Cog):
         icons = {"off": "➡", "track": "🔂", "queue": "🔁"}
         await self._send_embed(ctx, resources.get("music.loop_set", icon=icons[mode], mode=mode), color=discord.Color.green())
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.cooldown(2, 10, commands.BucketType.user)
     @dj_required()
     async def shuffle(self, ctx: commands.Context) -> None:
@@ -428,9 +431,10 @@ class Music(commands.Cog):
         self.queues[ctx.guild.id] = deque(lst)
         await self._send_embed(ctx, resources.get("music.shuffled"), color=discord.Color.green())
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.cooldown(3, 5, commands.BucketType.user)
     @dj_required()
+    @app_commands.describe(position="Position of the track to remove (1-indexed).")
     async def remove(self, ctx: commands.Context, position: int) -> None:
         """Remove a specific track from the queue."""
         q = self._get_queue(ctx.guild.id)
@@ -443,7 +447,7 @@ class Music(commands.Cog):
         self.queues[ctx.guild.id] = deque(lst)
         await self._send_embed(ctx, resources.get("music.removed", removed=removed), color=discord.Color.green())
 
-    @commands.command()
+    @commands.hybrid_command()
     @commands.cooldown(2, 10, commands.BucketType.user)
     @dj_required()
     async def clear(self, ctx: commands.Context) -> None:
