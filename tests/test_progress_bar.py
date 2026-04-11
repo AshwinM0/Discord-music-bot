@@ -5,7 +5,7 @@ The progress bar is a text-based visualisation shown in the "Now Playing"
 embed. It uses 🔘 as the playhead and ▬ as the track.
 """
 
-from cogs.music import make_progress_bar
+from core.utils import make_progress_bar
 
 
 def test_start_position():

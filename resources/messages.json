@@ -73,5 +73,14 @@
     "remove_fail": "Invalid position. The queue has {len} tracks.",
     "removed": "🗑️ Removed **{removed}** from the queue.",
     "queue_cleared": "🗑️ Queue cleared."
+  },
+  "admin": {
+    "channel_set": "✅ Music commands are now locked to {channel}.",
+    "channel_cleared": "🔓 Music commands can now be used in any channel.",
+    "dj_set": "🎧 DJ role set to {role}. Only users with this role can use destructive commands.",
+    "dj_cleared": "🔓 DJ role requirement removed. Anyone can use destructive commands.",
+    "not_admin": "❌ You need Administrator permissions to use this command.",
+    "wrong_channel": "❌ Please use the {channel} channel for music commands.",
+    "not_dj_role": "❌ You need the **{role}** role to use this command."
   }
 }
