@@ -403,7 +403,7 @@ async def test_play_duplicate_case_insensitive(music_cog, mock_ctx):
 @pytest.mark.asyncio
 async def test_button_play_pause_not_in_vc(music_cog, mock_interaction, mock_voice_client, mock_guild):
     """Play/Pause button should reject users not in the bot's VC."""
-    from cogs.music import MusicControlView
+    from core.music_ui import MusicControlView
 
     _connect_bot(music_cog.bot, mock_voice_client, mock_guild)
     mock_interaction.user.voice = None  # User is not in any VC
@@ -420,7 +420,7 @@ async def test_button_play_pause_not_in_vc(music_cog, mock_interaction, mock_voi
 @pytest.mark.asyncio
 async def test_button_skip_not_in_vc(music_cog, mock_interaction, mock_voice_client, mock_guild):
     """Skip button should reject users not in the bot's VC."""
-    from cogs.music import MusicControlView
+    from core.music_ui import MusicControlView
 
     _connect_bot(music_cog.bot, mock_voice_client, mock_guild)
     mock_interaction.user.voice = None
@@ -436,7 +436,7 @@ async def test_button_skip_not_in_vc(music_cog, mock_interaction, mock_voice_cli
 @pytest.mark.asyncio
 async def test_button_stop_not_in_vc(music_cog, mock_interaction, mock_voice_client, mock_guild):
     """Stop button should reject users not in the bot's VC."""
-    from cogs.music import MusicControlView
+    from core.music_ui import MusicControlView
 
     _connect_bot(music_cog.bot, mock_voice_client, mock_guild)
     mock_interaction.user.voice = None
@@ -454,7 +454,7 @@ async def test_button_stop_not_in_vc(music_cog, mock_interaction, mock_voice_cli
 @pytest.mark.asyncio
 async def test_button_play_pause_pauses(music_cog, mock_interaction, mock_voice_client, mock_guild):
     """Play/Pause button should pause when currently playing."""
-    from cogs.music import MusicControlView
+    from core.music_ui import MusicControlView
 
     mock_voice_client.is_playing.return_value = True
     _connect_bot(music_cog.bot, mock_voice_client, mock_guild)
@@ -469,7 +469,7 @@ async def test_button_play_pause_pauses(music_cog, mock_interaction, mock_voice_
 @pytest.mark.asyncio
 async def test_button_play_pause_resumes(music_cog, mock_interaction, mock_voice_client, mock_guild):
     """Play/Pause button should resume when currently paused."""
-    from cogs.music import MusicControlView
+    from core.music_ui import MusicControlView
 
     mock_voice_client.is_playing.return_value = False
     mock_voice_client.is_paused.return_value = True
@@ -487,7 +487,7 @@ async def test_button_play_pause_resumes(music_cog, mock_interaction, mock_voice
 @pytest.mark.asyncio
 async def test_button_skip_works(music_cog, mock_interaction, mock_voice_client, mock_guild):
     """Skip button should stop voice and set _skip_req flag."""
-    from cogs.music import MusicControlView
+    from core.music_ui import MusicControlView
 
     mock_voice_client.is_playing.return_value = True
     _connect_bot(music_cog.bot, mock_voice_client, mock_guild)
@@ -503,7 +503,7 @@ async def test_button_skip_works(music_cog, mock_interaction, mock_voice_client,
 @pytest.mark.asyncio
 async def test_button_stop_clears_all(music_cog, mock_interaction, mock_voice_client, mock_guild):
     """Stop button should clear queue, now_playing, and loop modes."""
-    from cogs.music import MusicControlView
+    from core.music_ui import MusicControlView
 
     mock_voice_client.is_playing.return_value = True
     _connect_bot(music_cog.bot, mock_voice_client, mock_guild)
@@ -525,7 +525,7 @@ async def test_button_stop_clears_all(music_cog, mock_interaction, mock_voice_cl
 @pytest.mark.asyncio
 async def test_button_play_pause_no_voice(music_cog, mock_interaction):
     """Play/Pause should send 'nothing playing' when bot is not connected."""
-    from cogs.music import MusicControlView
+    from core.music_ui import MusicControlView
 
     view = MusicControlView(music_cog)
     await MusicControlView.toggle_play(view, mock_interaction, MagicMock())

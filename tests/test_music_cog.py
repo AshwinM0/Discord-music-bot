@@ -52,11 +52,11 @@ def test_queues_are_guild_isolated(music_cog):
 @pytest.mark.asyncio
 async def test_queue_cap_enforced(music_cog, mock_ctx):
     """Adding a track when the queue is full should send an error embed."""
-    from cogs.music import MAX_QUEUE_SIZE
+    from core.config import settings
 
     # Pre-fill the queue to the limit
     q = music_cog._get_queue(mock_ctx.guild.id)
-    for i in range(MAX_QUEUE_SIZE):
+    for i in range(settings.MAX_QUEUE_SIZE):
         q.append(f"song {i}")
 
     # Try to play one more — call .callback to bypass Command wrapper

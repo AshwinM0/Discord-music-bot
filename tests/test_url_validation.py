@@ -9,7 +9,7 @@ If any of these tests fail, the bot may be vulnerable to SSRF attacks
 where a user tricks it into fetching internal network resources.
 """
 
-from cogs.music import _is_url
+from core.search import is_url as _is_url
 
 
 # ── YouTube URLs that SHOULD be accepted ─────────────────────────────

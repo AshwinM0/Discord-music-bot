@@ -13,7 +13,22 @@ from discord.ext import commands
 def _patch_settings(monkeypatch):
     """Prevent pydantic-settings from reading .env during tests."""
     monkeypatch.setenv("DISCORD_TOKEN", "fake-token-for-tests")
-    monkeypatch.setenv("CHANNEL_ID", "123456789")
+    
+import pytest_asyncio
+from tortoise import Tortoise
+
+@pytest_asyncio.fixture(autouse=True)
+async def _init_test_db():
+    """Initialize Tortoise-ORM with an in-memory SQLite database for tests."""
+    await Tortoise.init(
+        db_url="sqlite://:memory:",
+        modules={"models": ["core.database"]},
+    )
+    await Tortoise.generate_schemas()
+
+    yield
+
+    await Tortoise.close_connections()
 
 
 # ── Bot & Context fixtures ───────────────────────────────────────────
